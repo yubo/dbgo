@@ -45,7 +45,7 @@ const (
 	R_SNAPSHOT      = 0x04 /* snapshot the input */
 )
 
-type DB struct {
+type Db struct {
 	db     unsafe.Pointer
 	dbname string
 	typ    string
@@ -54,14 +54,14 @@ type DB struct {
 }
 
 type Db_entry struct {
-	key    string
-	ts     C.time_t
-	offset C.off_t
+	Key    string
+	Ts     C.time_t
+	Offset C.off_t
 }
 
-func DbOpen(dbname, typ, info string, lock int) (*DB, error) {
+func Open(dbname, typ, info string, lock int) (*Db, error) {
 	var null unsafe.Pointer
-	d := &DB{
+	d := &Db{
 		dbname: dbname,
 		typ:    typ,
 		info:   info,
@@ -84,7 +84,17 @@ func DbOpen(dbname, typ, info string, lock int) (*DB, error) {
 	return d, nil
 }
 
-func (d *DB) Close() error {
+func (d *Db) String() string {
+	return fmt.Sprintf("db[0x%08x] dbname[%s] type[%s] info[%s] lock[%d]",
+		d.db, d.dbname, d.typ, d.info, d.lock)
+}
+
+func (e *Db_entry) String() string {
+	return fmt.Sprintf("key %s ts %d offset %d",
+		e.Key, int64(e.Ts), int64(e.Offset))
+}
+
+func (d *Db) Close() error {
 	ret := C.db_close(d.db)
 	if ret == 0 {
 		return nil
@@ -92,37 +102,44 @@ func (d *DB) Close() error {
 	return fmt.Errorf("db_close error")
 }
 
-func (d *DB) Get(entry *Db_entry) error {
-	_key := C.CString(entry.key)
+func (d *Db) Get(entry *Db_entry) error {
+	_key := C.CString(entry.Key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_get(d.db, _key, &entry.ts, &entry.offset)
+	ret := C.db_get(d.db, _key, &entry.Ts, &entry.Offset, 0)
 	if ret == 0 {
 		return nil
 	}
 	return fmt.Errorf("db_get error")
 }
 
-func (d *DB) Put(entry *Db_entry) error {
-	_key := C.CString(entry.key)
+func (d *Db) Put(entry *Db_entry) error {
+	_key := C.CString(entry.Key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_put(d.db, _key, entry.ts, entry.offset)
+	ret := C.db_put(d.db, _key, entry.Ts, entry.Offset, R_NOOVERWRITE)
 	if ret == 0 {
 		return nil
 	}
 	return fmt.Errorf("db_put error")
 }
 
-func (d *DB) Update(entry *Db_entry) error {
-	return d.Put(entry)
-}
-
-func (d *DB) Delete(entry *Db_entry) error {
-	_key := C.CString(entry.key)
+func (d *Db) Update(entry *Db_entry) error {
+	_key := C.CString(entry.Key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_delete(d.db, _key)
+	ret := C.db_put(d.db, _key, entry.Ts, entry.Offset, 0)
+	if ret == 0 {
+		return nil
+	}
+	return fmt.Errorf("db_put error")
+}
+
+func (d *Db) Delete(entry *Db_entry) error {
+	_key := C.CString(entry.Key)
+	defer C.free(unsafe.Pointer(_key))
+
+	ret := C.db_delete(d.db, _key, 0)
 	if ret == 0 {
 		return nil
 	}

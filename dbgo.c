@@ -146,7 +146,7 @@ int db_close(void *d) {
 	return ((dbop_t *)d)->db->close(((dbop_t *)d)->db);
 }
 
-int db_get(void *d, const char *name, time_t *ts, off_t *offset){
+int db_get(void *d, const char *name, time_t *ts, off_t *offset, unsigned int flags){
 	DBT key, data;
 	int ret;
 	DB *db;
@@ -155,7 +155,7 @@ int db_get(void *d, const char *name, time_t *ts, off_t *offset){
 	key.data = (char *)name;
 	key.size = strlen(name)+1;
 
-	ret = db->get(db, &key, &data, 0);
+	ret = db->get(db, &key, &data, flags);
 	if(ret){
 		return -1;
 	}else{
@@ -165,7 +165,7 @@ int db_get(void *d, const char *name, time_t *ts, off_t *offset){
 	}
 }
 
-int db_put(void *d, const char *name, time_t ts, off_t offset){
+int db_put(void *d, const char *name, time_t ts, off_t offset, unsigned int flags){
 	DBT key, dat;
 	int len;
 	db_entry_t e;
@@ -183,10 +183,10 @@ int db_put(void *d, const char *name, time_t ts, off_t offset){
 	dat.data = &e;
 	dat.size = sizeof(e);
 
-	return db->put(db, &key, &dat, 0);
+	return db->put(db, &key, &dat, flags);
 }
 
-int db_delete(void *d, const char *name) {
+int db_delete(void *d, const char *name, unsigned int flags) {
 	DBT key;
 	DB *db;
 
@@ -194,6 +194,6 @@ int db_delete(void *d, const char *name) {
 
 	key.data = (char *)name;
 	key.size = strlen(name)+1;
-	return db->del(db, &key, 0);
+	return db->del(db, &key, flags);
 }
 
